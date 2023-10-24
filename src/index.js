@@ -116,10 +116,8 @@ new p5(p => {
 
             const percentage = (p.frameCount / 100) % 1;
             const from = this.facesPositions.down[0];
-            const mid = p.createVector(this.right.x + p.cos(-p.PI - p.PI / 2) * this.outerCircleRadius,
-                this.right.y + p.sin(-p.PI - p.PI / 2) * this.outerCircleRadius)
             const to = this.facesPositions.back[8];
-            const pos = percentage < 0.5 ? slerp(from, mid, this.right, percentage * 2) : slerp(mid, to, this.right, (percentage - 0.5) * 2);
+            const pos = slerp(from, to, this.right, percentage);
             p.circle(pos.x, pos.y, 10);
             p.pop();
         }
@@ -200,6 +198,18 @@ new p5(p => {
             ];
         }
     }
+
+    function slerp(from, to, center, percentage) {
+        const fromAngle = p.atan2(from.y - center.y, from.x - center.x);
+        const toAngle = p.atan2(to.y - center.y, to.x - center.x);
+
+        const currentAngle = p.lerp(fromAngle, toAngle, percentage);
+        const distance = p.dist(from.x, from.y, center.x, center.y);
+        return {
+            x: center.x + p.cos(currentAngle) * distance,
+            y: center.y + p.sin(currentAngle) * distance,
+        };
+    }
 }, body);
 
 const colorsRecord = {
@@ -254,10 +264,4 @@ class Face {
 function zip(...listOfList) {
     const shortestListLength = Math.min(...listOfList.map(list => list.length));
     return Array.from({ length: shortestListLength }).map((_, i) => listOfList.map(list => list[i]));
-}
-
-function slerp(from, to, center, percentage) {
-    const fromRelativeToCenter = p5.Vector.sub(from, center);
-    const toRelativeToCenter = p5.Vector.sub(to, center);
-    return p5.Vector.slerp(fromRelativeToCenter, toRelativeToCenter, percentage).add(center);
 }

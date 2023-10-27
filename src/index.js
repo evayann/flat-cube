@@ -3,24 +3,57 @@ import * as CubeJS from 'cubejs';
 
 const body = document.getElementsByTagName('body')[0];
 
+class CubeModel extends CubeJS {
+    constructor() {
+        super();
+        this.faces = this.cubeToFaces();
+    }
+
+    move(movement) {
+        super.move(movement);
+        this.faces = this.cubeToFaces();
+    }
+
+    randomize() {
+        super.randomize();
+        this.faces = this.cubeToFaces();
+    }
+
+    cubeToFaces() {
+        const cubeString = this.asString();
+        const cubeFaceStringList = cubeString.match(/.{1,9}/g) ?? [];
+
+        const faceStringToColorList = (faceString) => faceString.split('').map(colorCode => colorsRecord[colorCode]);
+        const cubeFaceList = cubeFaceStringList.map(faceStringToColorList);
+        const [up, right, front, down, left, back] = cubeFaceList;
+
+        return {
+            up, right, front, down, left, back
+        };
+    }
+}
+
+const fps = 60;
+const rotationSpeedInS = 3;
+
 new p5(p => {
-    let cube, cubeAxis;
+    let flatCube;
     let solutionList;
 
     p.setup = function () {
         CubeJS.initSolver();
-        cube = Cube.random();
-        cubeAxis = new CubeView(cube);
-        solutionList = cube.solve().split(' ');
+        flatCube = FlatCube.random();
+        // solutionList = flatCube.solve().split(' ');
+        solutionList = ['U'];
+        console.log(solutionList)
 
         p.createCanvas(800, 800);
-        p.background('lightgray');
     }
 
     p.draw = function () {
         p.translate(p.width / 2, p.height / 2);
-        cubeAxis.draw();
-        // drawCube2DSphere(cube);
+        p.background('lightgray');
+        flatCube.draw();
     }
 
     function updateCube() {
@@ -32,47 +65,19 @@ new p5(p => {
             return;
         }
 
-        cube.move(movement);
+        flatCube.move(movement);
     }
 
-    function drawCube2D(cube) {
-        const faceSize = Math.min(p.width, p.height) / 4;
-
-        function drawFace(face) {
-            face.rows.forEach((colorList, rowIndex) => {
-                const colorSize = faceSize / colorList.length;
-                colorList.forEach((color, columnIndex) => {
-                    p.fill(color);
-                    p.square(columnIndex * colorSize, rowIndex * colorSize, colorSize);
-                });
-            });
+    class FlatCube extends CubeModel {
+        static random() {
+            const flatCube = new FlatCube();
+            flatCube.randomize();
+            return flatCube;
         }
 
-        const { up, down, ...otherFaces } = cube.faces;
-
-        p.push();
-        p.translate(faceSize, 0);
-        drawFace(up);
-        p.pop();
-
-        p.push();
-        p.translate(0, faceSize);
-        Object.values(otherFaces).forEach(face => {
-            drawFace(face);
-            p.translate(faceSize, 0);
-        });
-        p.pop();
-
-        p.push();
-        p.translate(faceSize, faceSize * 2);
-        drawFace(down);
-        p.pop();
-    }
-
-    class CubeView {
-        get top() { return p.createVector(this.center.x, this.center.y); }
-        get left() { return p.createVector(this.center.x - this.halfRadius, this.center.y + this.halfRadius * p.sqrt(3)); }
-        get right() { return p.createVector(this.center.x + this.halfRadius, this.center.y + this.halfRadius * p.sqrt(3)); }
+        get top() { return p.createVector(this.centerPosition.x, this.centerPosition.y); }
+        get left() { return p.createVector(this.centerPosition.x - this.halfRadius, this.centerPosition.y + this.halfRadius * p.sqrt(3)); }
+        get right() { return p.createVector(this.centerPosition.x + this.halfRadius, this.centerPosition.y + this.halfRadius * p.sqrt(3)); }
 
         get topInner() { return { ...this.top, r: this.innerCircleRadius }; }
         get topMiddle() { return { ...this.top, r: this.middleCircleRadius }; }
@@ -90,14 +95,18 @@ new p5(p => {
         get middleCircleRadius() { return this.radius; }
         get outerCircleRadius() { return this.radius * (1 + this.percentStep); }
 
-        constructor(cube) {
+        constructor() {
+            super();
+
             this.percentStep = 0.2;
-            this.center = { x: 0, y: 0 };
+            this.centerPosition = { x: 0, y: 0 };
             this.radius = 200;
             this.halfRadius = this.radius / 2;
             this.diameter = this.radius * 2;
-            this.cube = cube;
             this.calculateFacePosition();
+            this.initializeDisplayFaces();
+
+            console.log(this)
         }
 
         draw() {
@@ -105,21 +114,47 @@ new p5(p => {
             p.translate(0, -this.halfRadius);
             this.drawLines();
 
-            const faceEntries = Object.entries(this.cube.faces);
-            faceEntries.forEach(([type, face]) => {
-                const positionList = this.facesPositions[type];
-                zip(positionList, face.colorList).forEach(([position, color]) => {
-                    p.fill(color);
-                    p.circle(position.x, position.y, 10);
+            // const faceEntries = Object.entries(this.faces);
+            // faceEntries.forEach(([type, faceColorList]) => {
+            //     const positionList = this.facesPositions[type];
+            //     zip(positionList, faceColorList).forEach(([position, color]) => {
+            //         p.fill(color);
+            //         p.circle(position.x, position.y, 10);
+            //     });
+            // });
+
+            if (flatCube.isSolved())
+                p.noLoop();
+
+            if (p.frameCount % (fps * rotationSpeedInS) === 0) {
+                this.initializeDisplayFaces();
+                updateCube();
+            }
+
+            const percentage = (p.frameCount / (fps * rotationSpeedInS)) % 1;
+            Object.values(this.displayFaces).forEach(blocList => {
+                blocList.forEach(bloc => {
+                    p.fill(bloc.color);
+                    const pos = slerp(bloc.from, bloc.to, this.top, percentage);
+                    p.circle(pos.x, pos.y, 10);
                 });
             });
 
-            const percentage = (p.frameCount / 100) % 1;
-            const from = this.facesPositions.down[0];
-            const to = this.facesPositions.back[8];
-            const pos = slerp(from, to, this.right, percentage);
-            p.circle(pos.x, pos.y, 10);
             p.pop();
+        }
+
+        move(movement) {
+            super.move(movement);
+
+            this.updateDisplayFaces(movement);
+
+            const movementDirection = movement[0];
+            this.circlePosition = this.getCirclePositionFromMovement(movementDirection);
+        }
+
+        randomize() {
+            super.randomize();
+            this.initializeDisplayFaces();
         }
 
         drawLines() {
@@ -181,6 +216,24 @@ new p5(p => {
                 front: [frontTopLeft, frontTopCenter, frontTopRight, frontMiddleLeft, frontMiddleCenter, frontMiddleRight, frontBottomLeft, frontBottomCenter, frontBottomRight],
                 back: [backTopLeft, backTopCenter, backTopRight, backMiddleLeft, backMiddleCenter, backMiddleRight, backBottomLeft, backBottomCenter, backBottomRight],
             }
+
+            this.nextPositionsByRotation = {
+                U: {
+                    up: [upTopRight, upMiddleRight, upBottomRight, upTopCenter, upMiddleCenter, upBottomCenter, upTopLeft, upMiddleLeft, upBottomLeft],
+                    left: [backTopLeft, backTopCenter, backTopRight, leftMiddleLeft, leftMiddleCenter, leftMiddleRight, leftBottomLeft, leftBottomCenter, leftBottomRight],
+                    front: [leftTopLeft, leftTopCenter, leftTopRight, frontMiddleLeft, frontMiddleCenter, frontMiddleRight, frontBottomLeft, frontBottomCenter, frontBottomRight],
+                    right: [frontTopLeft, frontTopCenter, frontTopRight, rightMiddleLeft, rightMiddleCenter, rightMiddleRight, rightBottomLeft, rightBottomCenter, rightBottomRight],
+                    back: [rightTopLeft, rightTopCenter, rightTopRight, backMiddleLeft, backMiddleCenter, backMiddleRight, backBottomLeft, backBottomCenter, backBottomRight],
+                },
+                D: {},
+                R: {},
+                L: {},
+                F: {},
+                B: {},
+                M: {},
+                E: {},
+                S: {}
+            }
         }
 
         intersectionBetween({ x: x1, y: y1, r: r1 }, { x: x2, y: y2, r: r2 }) {
@@ -197,14 +250,71 @@ new p5(p => {
                 p.createVector(intersectionX2, intersectionY2),
             ];
         }
+
+        getCirclePositionFromMovement(movementDirection) {
+            const circlePositionFromMovement = {
+                U: () => this.top, // Up
+                L: () => this.top, // Left
+                F: () => this.left, // Front
+                R: () => this.right, // Right
+                B: () => this.top, // Back
+                D: () => this.right, // Down
+            };
+
+            return circlePositionFromMovement[movementDirection]();
+        }
+
+        updateDisplayFaces(movement) {
+            this.displayFaces = Object.entries(this.displayFaces).reduce((displayFaces, [face, displayFaceList]) => {
+                const nextPositionList = this.nextPositionsByRotation[movement][face];
+                if (!nextPositionList) {
+                    displayFaces[face] = displayFaceList;
+                    return displayFaces;
+                };
+                console.log(this.nextPositionsByRotation.U.top)
+
+                displayFaces[face] = displayFaceList.map((displayFace, index) => {
+                    const nextPosition = nextPositionList[index];
+
+                    return {
+                        color: displayFace.color,
+                        from: displayFace.to,
+                        to: nextPosition,
+                    };
+                });
+
+                return displayFaces;
+            }, {});
+            console.log(this.displayFaces)
+        }
+
+        initializeDisplayFaces() {
+            this.displayFaces = Object.entries(this.faces).reduce((displayFaces, [face, colorList]) => {
+                const facePositionList = this.facesPositions[face];
+
+                displayFaces[face] = colorList.map((color, index) => {
+                    const position = facePositionList[index];
+
+                    return {
+                        color,
+                        from: position,
+                        to: position,
+                    };
+                });
+
+                return displayFaces;
+            }, {});
+        }
     }
 
     function slerp(from, to, center, percentage) {
         const fromAngle = p.atan2(from.y - center.y, from.x - center.x);
         const toAngle = p.atan2(to.y - center.y, to.x - center.x);
+        const [minAngle, maxAngle] = fromAngle < toAngle ? [fromAngle, toAngle] : [toAngle, fromAngle];
 
-        const currentAngle = p.lerp(fromAngle, toAngle, percentage);
+        const currentAngle = p.lerp(minAngle, maxAngle, percentage);
         const distance = p.dist(from.x, from.y, center.x, center.y);
+
         return {
             x: center.x + p.cos(currentAngle) * distance,
             y: center.y + p.sin(currentAngle) * distance,
@@ -220,46 +330,6 @@ const colorsRecord = {
     B: 'green', // Back
     D: 'yellow', // Down
 };
-
-class Cube extends CubeJS {
-    static random() {
-        const cube = new Cube();
-        cube.randomize();
-        return cube;
-    }
-
-    get faces() {
-        const cubeString = this.asString();
-        const cubeFaceStringList = cubeString.match(/.{1,9}/g) ?? [];
-        const cubeFaceList = cubeFaceStringList.map(faceString => this.stringToFace(faceString));
-        const [up, right, front, down, left, back] = cubeFaceList;
-        return {
-            up, right, front, down, left, back
-        };
-    }
-
-    stringToFace(faceString) {
-        const faceColorString = faceString.split('')
-            .map(colorCode => colorsRecord[colorCode]);
-        return new Face(faceColorString);
-    }
-}
-
-class Face {
-    get rows() {
-        return [
-            this.firstRow,
-            this.secondRow,
-            this.thirdRow,
-        ];
-    }
-
-    get firstRow() { return this.colorList.slice(0, 3); }
-    get secondRow() { return this.colorList.slice(3, 6); }
-    get thirdRow() { return this.colorList.slice(6, 9); }
-
-    constructor(colorList) { this.colorList = colorList; }
-}
 
 function zip(...listOfList) {
     const shortestListLength = Math.min(...listOfList.map(list => list.length));

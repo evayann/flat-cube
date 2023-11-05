@@ -1,6 +1,6 @@
 import * as p5 from "p5";
 
-let p: p5;
+export let p: p5;
 
 export let TWO_PI: number;
 

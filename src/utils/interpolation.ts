@@ -1,6 +1,6 @@
 import * as p5 from "p5";
-import { createVector, lerp, dist, TWO_PI } from "./p5-utils";
-import { Vec2 } from "./vec2";
+import { createVector, lerp, dist, TWO_PI } from "../p5-utils";
+import { Vec2 } from "../vec2";
 
 export function slerp(from: Vec2, to: Vec2, center: Vec2, percentage: number, clockwise = false): p5.Vector {
     const fromAngle = (Math.atan2(from.y - center.y, from.x - center.x) + TWO_PI) % TWO_PI;

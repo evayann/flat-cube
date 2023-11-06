@@ -8,7 +8,7 @@ export class Circle {
     get raw(): { x: number, y: number, radius: number } {
         return {
             x: this._position.x,
-            y: this._position.x,
+            y: this._position.y,
             radius: this._radius,
         };
     }

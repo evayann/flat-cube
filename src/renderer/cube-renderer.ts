@@ -2,9 +2,9 @@ import * as p5 from 'p5';
 import { CubeModel } from '../model/cube-model';
 import { p } from '../p5-utils';
 import { AnimationManager } from '../animation-manager';
-import { FaceName } from '../face-name';
+import { FaceName, faceNameList } from '../face-name';
 import { Circle } from '../circle';
-import { range } from '../utils/iteration';
+import { range, zip } from '../utils/iteration';
 import { Vec2 } from '../vec2';
 
 
@@ -13,13 +13,14 @@ export class RendererCube extends CubeModel {
     isMoving: boolean;
 
     private animationManager: AnimationManager;
+
     private percentStep: number;
     private centerPosition: p5.Vector;
     private radius: number;
     private halfRadius: number;
 
-
     private renderedFaces: Record<FaceName, any>;
+    private positions!: Record<FaceName, Vec2[]>;
 
     private get renderedFaceList(): any[] {
         return Object.values(this.renderedFaces);
@@ -83,7 +84,6 @@ export class RendererCube extends CubeModel {
 
     private drawLines() {
         p.noFill();
-
         const circleList: Circle[] = [
             ...this.topCircleList,
             ...this.leftCircleList,
@@ -97,7 +97,29 @@ export class RendererCube extends CubeModel {
     }
 
     private calculatePositions(): void {
-        console.log(this.topCircleList);
+        this.positions = faceNameList.reduce((emptyPositions, faceName) => ({ 
+            ...emptyPositions,
+            [faceName]: range(this._dimension).map(() => ({ x: 0, y: 0 }))
+        }), {} as Record<FaceName, Vec2[]>);
+
+        this.topCircleList.forEach((topCircle, topCircleIndex) => {
+            this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
+                const [leftPosition, rightPosition] = topCircle.intersectionBetween(leftCircle);
+                this.positions.left[topCircleIndex + leftCircleIndex] = leftPosition;
+            });
+
+            this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
+                const [backPosition, frontPosition] = topCircle.intersectionBetween(rightCircle);
+                this.positions.left[topCircleIndex + rightCircleIndex] = backPosition;
+            });
+        });
+
+        this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
+            this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
+                const [upPosition, downPosition] = leftCircle.intersectionBetween(rightCircle);
+                this.positions.up[leftCircleIndex + rightCircleIndex] = upPosition;
+            });
+        });
     }
 
     private getCircleListAt({ x, y }: Vec2): Circle[] {

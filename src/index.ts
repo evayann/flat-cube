@@ -16,7 +16,7 @@ new p5(p => {
 
     p.setup = function () {
         initializeP5Methods(p);
-        rendererCube = new RendererCube(3);
+        rendererCube = new RendererCube(4);
 
         // flatCube = FlatCube.random();
         // solutionList = flatCube.solve().split(' ');
@@ -26,6 +26,7 @@ new p5(p => {
 
         p.createCanvas(800, 800);
         updateCube();
+        rendererCube.rotateY(0, true)
     }
 
     p.draw = function () {

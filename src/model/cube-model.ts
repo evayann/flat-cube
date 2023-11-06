@@ -77,10 +77,12 @@ export class CubeModel {
         });
 
         const isBorder = rowIndex === 0 || rowIndex === this._dimension;
+        console.log([...this.faces.up.blockList])
         if (!isBorder) return;
 
         const borderFace = rowIndex === 0 ? this.faces.up : this.faces.down;
         borderFace.rotateClockwise();
+        console.log([...this.faces.up.blockList])
     }
 
     toString(): string {
@@ -104,7 +106,7 @@ type Block = {
     value: string;
 };
 
-class Face {
+export class Face {
     static create() {
         return new Face();
     }
@@ -144,7 +146,7 @@ class Face {
     }
 
     private constructor() {
-        this._initialBlockValue = 'white';
+        this._initialBlockValue = 'key1';
         this.dimension(3);
     }
 
@@ -182,7 +184,7 @@ class Face {
     rotateClockwise(): Face {
         this._blockList = this._blockList.map((_, index) => {
             const firstIndexOfRow = this.squaredDimension - (this._dimension - 1) - 1;
-            const nbColumnPassed = this._dimension * (index % 3);
+            const nbColumnPassed = this._dimension * (index % this._dimension);
             const nbRowPassed = Math.floor(index / this._dimension);
             return this._blockList[firstIndexOfRow - nbColumnPassed + nbRowPassed];
         });

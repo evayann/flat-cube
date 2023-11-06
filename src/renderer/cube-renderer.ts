@@ -1,10 +1,10 @@
 import * as p5 from 'p5';
-import { CubeModel } from '../model/cube-model';
-import { p } from '../p5-utils';
 import { AnimationManager } from '../animation-manager';
-import { FaceName, faceNameList } from '../face-name';
 import { Circle } from '../circle';
-import { range, zip } from '../utils/iteration';
+import { FaceName, faceNameList } from '../face-name';
+import { CubeModel, Face } from '../model/cube-model';
+import { p } from '../p5-utils';
+import { range } from '../utils/iteration';
 import { Vec2 } from '../vec2';
 
 
@@ -79,6 +79,25 @@ export class RendererCube extends CubeModel {
         //     p.circle(position.x, position.y, 10);
         // }));
 
+        const facesColors: Record<string, string> = {
+            key1: 'white',
+            key2: 'red',
+            key3: 'blue',
+            key4: 'orange',
+            key5: 'green',
+            key6: 'yellow'
+        };
+
+        const faceNameAndFaceList = Object.entries(this.faces) as [FaceName, Face][];
+        faceNameAndFaceList.forEach(([faceName, face]) => {
+            const positionList = this.positions[faceName];
+            face.blockList.forEach((block, index) => {
+                const { x, y } = positionList[index];
+                p.fill(facesColors[block.value]);
+                p.circle(x, y, 10);
+            });
+        });
+
         p.pop();
     }
 
@@ -97,27 +116,34 @@ export class RendererCube extends CubeModel {
     }
 
     private calculatePositions(): void {
-        this.positions = faceNameList.reduce((emptyPositions, faceName) => ({ 
+        this.positions = faceNameList.reduce((emptyPositions, faceName) => ({
             ...emptyPositions,
             [faceName]: range(this._dimension).map(() => ({ x: 0, y: 0 }))
         }), {} as Record<FaceName, Vec2[]>);
 
         this.topCircleList.forEach((topCircle, topCircleIndex) => {
             this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
-                const [leftPosition, rightPosition] = topCircle.intersectionBetween(leftCircle);
-                this.positions.left[topCircleIndex + leftCircleIndex] = leftPosition;
+                const [rightPosition, leftPosition] = topCircle.intersectionBetween(leftCircle);
+
+                // left n - dimension -> n, n - 2dimensions -> n - dimension - 1 ...
+                this.positions.left[this._dimension * (this._dimension - 1 - topCircleIndex) + leftCircleIndex % this._dimension] = leftPosition;
+
+                // right n to 0
+                this.positions.right[this._dimension * this._dimension - 1 - (topCircleIndex * this._dimension + leftCircleIndex)] = rightPosition;
             });
 
             this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
                 const [backPosition, frontPosition] = topCircle.intersectionBetween(rightCircle);
-                this.positions.left[topCircleIndex + rightCircleIndex] = backPosition;
+                this.positions.back[topCircleIndex + this._dimension * rightCircleIndex] = backPosition;
+                this.positions.front[topCircleIndex + this._dimension * rightCircleIndex] = frontPosition;
             });
         });
 
         this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
             this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
                 const [upPosition, downPosition] = leftCircle.intersectionBetween(rightCircle);
-                this.positions.up[leftCircleIndex + rightCircleIndex] = upPosition;
+                this.positions.up[leftCircleIndex + this._dimension * rightCircleIndex] = upPosition;
+                this.positions.down[leftCircleIndex + this._dimension * rightCircleIndex] = downPosition;
             });
         });
     }

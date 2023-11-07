@@ -12,42 +12,44 @@ const body = document.getElementsByTagName('body')[0];
 new p5(p => {
     // let flatCube: FlatCube;
     let rendererCube: RendererCube;
-    let solutionList: string[];
+    let solutionList: { axe: 'x' | 'y', index: number, clockwise: boolean }[];
 
     p.setup = function () {
         initializeP5Methods(p);
-        rendererCube = new RendererCube(4);
+        rendererCube = new RendererCube(6);
 
         // flatCube = FlatCube.random();
         // solutionList = flatCube.solve().split(' ');
         // console.log(solutionList);
-        solutionList = ['E', 'E\'', 'E', 'E\'', 'E', 'E\''];
+        solutionList = [
+            { axe: 'x', index: 1, clockwise: true },
+            { axe: 'y', index: 1, clockwise: true },
+            { axe: 'y', index: 1, clockwise: true },
+            { axe: 'x', index: 1, clockwise: false },
+        ];
         console.log(solutionList);
 
         p.createCanvas(800, 800);
-        updateCube();
-        rendererCube.rotateY(0, true)
     }
 
     p.draw = function () {
         p.translate(p.width / 2, p.height / 2);
         p.background('lightgray');
 
-        rendererCube.draw();
-
-        // if (flatCube.isSolved()) {
+        // if (rendererCube.isSolved()) {
         //     // p.noLoop();
         //     return;
         // }
 
-        // flatCube.draw();
+        rendererCube.draw();
+
+        if (p.frameCount % 60 === 0) updateCube();
     }
 
     p.mouseClicked = () => updateCube();
 
     function updateCube() {
         // if (flatCube.isMoving) return;
-
 
         const movement = solutionList.shift();
 
@@ -56,6 +58,13 @@ new p5(p => {
             // p.noLoop();
             return;
         }
+
+        const { axe, index, clockwise } = movement;
+        const movements = {
+            x: () => rendererCube.rotateX(index, clockwise),
+            y: () => rendererCube.rotateY(index, clockwise),
+        };
+        movements[axe]();
 
         // flatCube.move(movement);
     }

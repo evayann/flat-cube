@@ -27,12 +27,16 @@ export class RendererCube extends CubeModel {
     }
 
     private get topCircleList(): Circle[] {
-        return this.getCircleListAt(this.centerPosition);
+        const centerPosition = {
+            x: this.centerPosition.x,
+            y: this.centerPosition.y + this.spaceBetweenFirstAndLastCircle / 2
+        };
+        return this.getCircleListAt(centerPosition);
     }
 
     private get leftCircleList(): Circle[] {
         const centerPosition = {
-            x: this.centerPosition.x - this.halfRadius,
+            x: this.centerPosition.x - this.halfRadius + this.spaceBetweenFirstAndLastCircle / 3,
             y: this.centerPosition.y + this.halfRadius * p.sqrt(3)
         };
         return this.getCircleListAt(centerPosition);
@@ -40,16 +44,20 @@ export class RendererCube extends CubeModel {
 
     private get rightCircleList(): Circle[] {
         const centerPosition = {
-            x: this.centerPosition.x + this.halfRadius,
+            x: this.centerPosition.x + this.halfRadius - this.spaceBetweenFirstAndLastCircle / 3,
             y: this.centerPosition.y + this.halfRadius * p.sqrt(3)
         };
         return this.getCircleListAt(centerPosition);
     }
 
+    private get spaceBetweenFirstAndLastCircle(): number {
+        return this.radius - this.radius * (1 - this.percentStep * (this._dimension - 1));
+    }
+
     constructor(dimension: number) {
         super(dimension);
         this.animationManager = new AnimationManager();
-        this.percentStep = 0.1;
+        this.percentStep = 0.075;
         this.centerPosition = p.createVector(0, 0);
         this.radius = 200;
         this.halfRadius = this.radius / 2;
@@ -147,8 +155,8 @@ export class RendererCube extends CubeModel {
         this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
             this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
                 const [upPosition, downPosition] = leftCircle.intersectionBetween(rightCircle);
-                this.positions.up[leftCircleIndex + this._dimension * rightCircleIndex] = upPosition;
-                this.positions.down[leftCircleIndex + this._dimension * rightCircleIndex] = downPosition;
+                this.positions.up[leftCircleIndex * this._dimension + rightCircleIndex] = upPosition;
+                this.positions.down[leftCircleIndex * this._dimension + rightCircleIndex] = downPosition;
             });
         });
     }

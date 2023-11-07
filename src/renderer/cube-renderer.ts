@@ -121,11 +121,12 @@ export class RendererCube extends CubeModel {
             [faceName]: range(this._dimension).map(() => ({ x: 0, y: 0 }))
         }), {} as Record<FaceName, Vec2[]>);
 
+        // n = dimension * dimension; d = dimension
         this.topCircleList.forEach((topCircle, topCircleIndex) => {
             this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
                 const [rightPosition, leftPosition] = topCircle.intersectionBetween(leftCircle);
 
-                // left n - dimension -> n, n - 2dimensions -> n - dimension - 1 ...
+                // left n - d -> n, n - 2d -> n - d - 1 ...
                 this.positions.left[this._dimension * (this._dimension - 1 - topCircleIndex) + leftCircleIndex % this._dimension] = leftPosition;
 
                 // right n to 0
@@ -134,8 +135,12 @@ export class RendererCube extends CubeModel {
 
             this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
                 const [backPosition, frontPosition] = topCircle.intersectionBetween(rightCircle);
-                this.positions.back[topCircleIndex + this._dimension * rightCircleIndex] = backPosition;
-                this.positions.front[topCircleIndex + this._dimension * rightCircleIndex] = frontPosition;
+
+                // back n to 0
+                this.positions.back[this._dimension * this._dimension - 1 - (topCircleIndex * this._dimension + rightCircleIndex)] = backPosition;
+
+                // front n - d -> n, n - 2d -> n - d - 1 ...
+                this.positions.front[this._dimension * (this._dimension - 1 - topCircleIndex) + rightCircleIndex % this._dimension] = frontPosition;
             });
         });
 

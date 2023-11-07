@@ -5,7 +5,7 @@ import { slerp } from './utils/interpolation';
 import { Circle } from './circle';
 import { FaceName } from './face-name';
 import { initializeP5Methods } from './p5-utils';
-import { RendererCube } from './renderer/cube-renderer';
+import { RendererCube } from './renderer/cube.renderer';
 
 const body = document.getElementsByTagName('body')[0];
 
@@ -16,7 +16,7 @@ new p5(p => {
 
     p.setup = function () {
         initializeP5Methods(p);
-        rendererCube = new RendererCube(6);
+        rendererCube = new RendererCube(3);
 
         // flatCube = FlatCube.random();
         // solutionList = flatCube.solve().split(' ');

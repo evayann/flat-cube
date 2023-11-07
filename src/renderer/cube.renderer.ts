@@ -2,14 +2,14 @@ import * as p5 from 'p5';
 import { AnimationManager } from '../animation-manager';
 import { Circle } from '../circle';
 import { FaceName, faceNameList } from '../face-name';
-import { CubeModel, Face } from '../model/cube-model';
+import { HistoricBlock, HistoricalCube } from '../model/historic-cube.model';
 import { p } from '../p5-utils';
 import { range } from '../utils/iteration';
 import { Vec2 } from '../vec2';
 
 
 
-export class RendererCube extends CubeModel {
+export class RendererCube extends HistoricalCube {
     isMoving: boolean;
 
     private animationManager: AnimationManager;
@@ -64,6 +64,8 @@ export class RendererCube extends CubeModel {
         this.isMoving = false;
         this.calculatePositions();
 
+
+
         // this.renderedFaces = Object.entries(this.faces).reduce((renderedFaces, [faceName, face]) => {
         //     renderedFaces[faceName] = face.blockList.map(block => ({
         //         position: this.positions[faceName],
@@ -96,10 +98,10 @@ export class RendererCube extends CubeModel {
             key6: 'yellow'
         };
 
-        const faceNameAndFaceList = Object.entries(this.faces) as [FaceName, Face][];
-        faceNameAndFaceList.forEach(([faceName, face]) => {
+        const faceNameAndFaceList = Object.entries(this.historicFaces) as [FaceName, HistoricBlock[]][];
+        faceNameAndFaceList.forEach(([faceName, blockList]) => {
             const positionList = this.positions[faceName];
-            face.blockList.forEach((block, index) => {
+            blockList.forEach((block, index) => {
                 const { x, y } = positionList[index];
                 p.fill(facesColors[block.value]);
                 p.circle(x, y, 10);

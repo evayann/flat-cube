@@ -2,12 +2,14 @@ import * as p5 from 'p5';
 import { AnimationManager } from '../animation-manager';
 import { Circle } from '../circle';
 import { FaceName, faceNameList } from '../face-name';
+import { Block, Face } from '../model/face.model';
 import { HistoricBlock, HistoricalCube } from '../model/historic-cube.model';
 import { p } from '../p5-utils';
 import { range } from '../utils/iteration';
 import { Vec2 } from '../vec2';
+import { slerp } from '../utils/interpolation';
 
-
+type BlockItem = { position: Vec2, color: string };
 
 export class RendererCube extends HistoricalCube {
     isMoving: boolean;
@@ -19,11 +21,20 @@ export class RendererCube extends HistoricalCube {
     private radius: number;
     private halfRadius: number;
 
-    private renderedFaces: Record<FaceName, any>;
-    private positions!: Record<FaceName, Vec2[]>;
+    private renderedFaces: Record<FaceName, BlockItem[]>;
+    private positions!: Record<FaceName, p5.Vector[]>;
 
-    private get renderedFaceList(): any[] {
-        return Object.values(this.renderedFaces);
+    private facesColors: Record<string, string> = {
+        key1: 'white',
+        key2: 'red',
+        key3: 'blue',
+        key4: 'orange',
+        key5: 'green',
+        key6: 'yellow'
+    };
+
+    private get renderedBlockList(): BlockItem[] {
+        return Object.values(this.renderedFaces).flat();
     }
 
     private get topCircleList(): Circle[] {
@@ -65,16 +76,15 @@ export class RendererCube extends HistoricalCube {
         this.calculatePositions();
 
 
+        const faceList = Object.entries(this.faces) as [FaceName, Face][];
+        this.renderedFaces = faceList.reduce((renderedFaces, [faceName, face]) => {
+            renderedFaces[faceName] = face.blockList.map((block, index) => ({
+                position: this.positions[faceName][index],
+                color: block.value
+            }));
 
-        // this.renderedFaces = Object.entries(this.faces).reduce((renderedFaces, [faceName, face]) => {
-        //     renderedFaces[faceName] = face.blockList.map(block => ({
-        //         position: this.positions[faceName],
-        //         value: block.value
-        //     }));
-
-        //     return renderedFaces;
-        // }, {});
-        // this.updateFaces();
+            return renderedFaces;
+        }, {} as Record<FaceName, { position: Vec2, color: string }[]>);
     }
 
     draw() {
@@ -84,32 +94,83 @@ export class RendererCube extends HistoricalCube {
         p.translate(0, -this.halfRadius);
         this.drawLines();
 
-        // this.renderedFaceList.forEach(face => face.forEach(({ color, position }) => {
-        //     p.fill(color);
-        //     p.circle(position.x, position.y, 10);
-        // }));
-
-        const facesColors: Record<string, string> = {
-            key1: 'white',
-            key2: 'red',
-            key3: 'blue',
-            key4: 'orange',
-            key5: 'green',
-            key6: 'yellow'
-        };
-
-        const faceNameAndFaceList = Object.entries(this.historicFaces) as [FaceName, HistoricBlock[]][];
-        faceNameAndFaceList.forEach(([faceName, blockList]) => {
-            const positionList = this.positions[faceName];
-            blockList.forEach((block, index) => {
-                const { x, y } = positionList[index];
-                p.fill(facesColors[block.value]);
-                p.circle(x, y, 10);
-            });
+        this.renderedBlockList.forEach(({ color, position }) => {
+            p.fill(color);
+            p.circle(position.x, position.y, 10);
         });
+
+        // const faceNameAndFaceList = Object.entries(this.historicFaces) as [FaceName, HistoricBlock[]][];
+        // faceNameAndFaceList.forEach(([faceName, blockList]) => {
+        //     const positionList = this.positions[faceName];
+        //     blockList.forEach((block, index) => {
+        //         const { x, y } = positionList[index];
+        //         p.fill(this.facesColors[block.value]);
+        //         p.circle(x, y, 10);
+        //     });
+        // });
 
         p.pop();
     }
+
+    rotateX(columnIndex: number, isClockwise: boolean): void {
+        if (this.isMoving) return;
+        super.rotateX(columnIndex, isClockwise);
+        this.triggerMogementAnimation(isClockwise);
+    }
+
+    rotateY(rowIndex: number, isClockwise: boolean): void {
+        if (this.isMoving) return;
+        super.rotateY(rowIndex, isClockwise);
+        this.triggerMogementAnimation(isClockwise);
+    }
+
+    private triggerMogementAnimation(isClockwise: boolean): void {
+        this.animationManager.animate({
+            callback: (percentage) => {
+                this.isMoving = true;
+                const faceList = Object.entries(this.historicFaces) as [FaceName, HistoricBlock[]][];
+                this.renderedFaces = faceList.reduce((renderedFaces, [faceName, historicBlock]) => {
+                    renderedFaces[faceName] = historicBlock.map(({ oldPosition, value }: HistoricBlock, index: number): BlockItem => {
+                        const color = this.facesColors[value];
+                        const hasChangeOfFace = oldPosition.face === faceName;
+                        const blockNotMove = hasChangeOfFace && oldPosition.index === index;
+
+                        if (blockNotMove) return { position: this.getPositionFromKey({ faceName, index }), color };
+
+                        const oldPositionVec = this.getPositionFromKey({ faceName: oldPosition.face, index: oldPosition.index });
+                        const newPositionVec = this.getPositionFromKey({ faceName, index });
+                        const position = !hasChangeOfFace ? p5.Vector.lerp(oldPositionVec, newPositionVec, percentage)
+                            : slerp(oldPositionVec, newPositionVec, circlePosition, percentage, isClockwise);
+
+                        return { color, position };
+
+                        // if (isBlockItem(displayBlock)) return displayBlock;
+
+                        // const position = displayBlock.type === 'linear' ?
+                        //     p5.Vector.lerp(displayBlock.from, displayBlock.to, percentage)
+                        //     : slerp(displayBlock.from, displayBlock.to, circlePosition.raw, percentage, displayBlock.clockwise);
+
+                        // return {
+                        //     color: displayBlock.color,
+                        //     position
+                        // };
+                    });
+
+                    return renderedFaces;
+                }, {} as Record<FaceName, BlockItem[]>);
+            },
+            whenEnd: () => this.isMoving = false,
+            durationInSecond: 1
+        });
+    }
+
+    private getPositionFromKey({ faceName, index }: { faceName: FaceName, index: number }): p5.Vector {
+        return this.positions[faceName][index];
+    }
+
+    // private getCenterCircleFromKey(axeRotate: 'x' | 'y'{, faceName, index }: { faceName: FaceName, index: number }): p5.Vector {
+    //     return
+    // }
 
     private drawLines() {
         p.noFill();
@@ -121,35 +182,22 @@ export class RendererCube extends HistoricalCube {
         circleList.forEach(({ raw: { x, y, radius } }) => p.circle(x, y, radius * 2));
     }
 
-    private updateFaces(): void {
-        // this.renderedFaces = 
-    }
-
     private calculatePositions(): void {
         this.positions = faceNameList.reduce((emptyPositions, faceName) => ({
             ...emptyPositions,
             [faceName]: range(this._dimension).map(() => ({ x: 0, y: 0 }))
-        }), {} as Record<FaceName, Vec2[]>);
+        }), {} as Record<FaceName, p5.Vector[]>);
 
-        // n = dimension * dimension; d = dimension
         this.topCircleList.forEach((topCircle, topCircleIndex) => {
             this.leftCircleList.forEach((leftCircle, leftCircleIndex) => {
                 const [rightPosition, leftPosition] = topCircle.intersectionBetween(leftCircle);
-
-                // left n - d -> n, n - 2d -> n - d - 1 ...
                 this.positions.left[this._dimension * (this._dimension - 1 - topCircleIndex) + leftCircleIndex % this._dimension] = leftPosition;
-
-                // right n to 0
                 this.positions.right[this._dimension * this._dimension - 1 - (topCircleIndex * this._dimension + leftCircleIndex)] = rightPosition;
             });
 
             this.rightCircleList.forEach((rightCircle, rightCircleIndex) => {
                 const [backPosition, frontPosition] = topCircle.intersectionBetween(rightCircle);
-
-                // back n to 0
                 this.positions.back[this._dimension * this._dimension - 1 - (topCircleIndex * this._dimension + rightCircleIndex)] = backPosition;
-
-                // front n - d -> n, n - 2d -> n - d - 1 ...
                 this.positions.front[this._dimension * (this._dimension - 1 - topCircleIndex) + rightCircleIndex % this._dimension] = frontPosition;
             });
         });

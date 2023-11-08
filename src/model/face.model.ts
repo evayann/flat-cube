@@ -1,5 +1,4 @@
 import { range } from "../utils/iteration";
-import { Vec2 } from "../vec2";
 
 export type Block = {
     id: number;

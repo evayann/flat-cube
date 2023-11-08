@@ -3,7 +3,7 @@ import { zip } from "../utils/iteration";
 import { CubeModel, Faces } from "./cube.model";
 import { Block, Face } from "./face.model";
 
-export type HistoricBlock = { value: string, oldPosition: [FaceName, number] };
+export type HistoricBlock = { value: string, oldPosition: { face: FaceName, index: number } };
 
 export class HistoricalCube extends CubeModel {
     historicFaces: Record<FaceName, HistoricBlock[]>;
@@ -26,11 +26,11 @@ export class HistoricalCube extends CubeModel {
     }
 
     private updateHistoricFaces(oldFaces: Faces, newFaces: Faces): void {
-        const searchBlockInFaces = (faces: Faces, searchedBlock: Block): [FaceName, number] | undefined => {
+        const searchBlockInFaces = (faces: Faces, searchedBlock: Block): { face: FaceName, index: number } | undefined => {
             const nameAndFaceList = Object.entries(faces) as [FaceName, Face][];
             for (const [faceName, face] of nameAndFaceList) {
                 const indexOf = face.blockList.findIndex(block => block.id === searchedBlock.id && block.value === searchedBlock.value);
-                if (indexOf !== -1) return [faceName, indexOf]
+                if (indexOf !== -1) return { face: faceName, index: indexOf }
             };
 
             return undefined;
@@ -44,7 +44,7 @@ export class HistoricalCube extends CubeModel {
             }));
 
             return historicFaces;
-        }, {} as Record<FaceName, any>);
+        }, {} as Record<FaceName, HistoricBlock[]>);
     }
 
     private facesCopy(): Faces {

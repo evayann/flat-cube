@@ -84,6 +84,33 @@ export class CubeModel {
         borderFace.rotateClockwise();
     }
 
+    rotateZ(rowIndex: number, isClockwise: boolean): void {
+        this.checkIsCorrectMove(rowIndex, 'z');
+
+        const maxColumn = this._dimension - 1;
+        const faceNameList: FaceName[] = ['up', 'right', 'down', 'left'];
+        const [upCopy, rightCopy, downCopy, leftCopy] = this.extractAndCopy(faceNameList);
+
+        if (isClockwise) {
+            this.faces.right.updateColumn(maxColumn - rowIndex, upCopy.rows.at(maxColumn - rowIndex));
+            this.faces.down.updateRow(rowIndex, rightCopy.columns.at(rowIndex));
+            this.faces.left.updateColumn(rowIndex, downCopy.columns.at(rowIndex));
+            this.faces.up.updateRow(rowIndex, leftCopy.columns.at(maxColumn - rowIndex));
+        }
+        else {
+            this.faces.up.updateRow(rowIndex, rightCopy.columns.at(maxColumn - rowIndex));
+            this.faces.right.updateColumn(maxColumn - rowIndex, downCopy.rows.at(maxColumn - rowIndex));
+            this.faces.down.updateRow(rowIndex, leftCopy.columns.at(rowIndex));
+            this.faces.left.updateColumn(rowIndex, upCopy.columns.at(rowIndex));
+        }
+
+        const isBorder = rowIndex === 0 || rowIndex === this._dimension;
+        if (!isBorder) return;
+
+        const borderFace = rowIndex === 0 ? this.faces.front : this.faces.back;
+        borderFace.rotateClockwise();
+    }
+
     toString(): string {
         const stringifyFace = (face: Face) => '\t' + face.rows.map(row => row.map(({ value }) => value).join(' ')).join('\n\t\t');
         const faceListStringify: string[] = Object.entries(this.faces).map(([faceName, face]) => `${faceName} = {\n\t${stringifyFace(face)}\n\t}`);

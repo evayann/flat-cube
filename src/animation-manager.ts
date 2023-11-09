@@ -1,5 +1,4 @@
-import * as p5 from 'p5';
-import { frameCount, frameRate } from './p5-utils';
+import { p, frameCount, frameRate } from './p5-utils';
 
 export type AnimatableItem = { callback: (percent: number) => void, whenEnd: () => void, durationInSecond: number };
 type InternalAnimatableItem = AnimatableItem & { startAnimationTimeInSecond: number };
@@ -24,9 +23,13 @@ export class AnimationManager {
             .filter((animatableItem) => animationIsFinish(animatableItem));
 
         animatableItemFinishedList.forEach(({ whenEnd }) => whenEnd?.());
-        animatableItemNotFinishedList.forEach(({ callback, durationInSecond, startAnimationTimeInSecond }) =>
-            callback((currentTimeInSecondes - startAnimationTimeInSecond) / durationInSecond)
+        this.animatableItemList.forEach(({ callback, durationInSecond, startAnimationTimeInSecond }) =>
+            callback(p.constrain((currentTimeInSecondes - startAnimationTimeInSecond) / durationInSecond, 0, 1))
         );
+
+        // animatableItemNotFinishedList.forEach(({ callback, durationInSecond, startAnimationTimeInSecond }) =>
+        //     callback((currentTimeInSecondes - startAnimationTimeInSecond) / durationInSecond)
+        // );
 
         this.animatableItemList = animatableItemNotFinishedList;
     }

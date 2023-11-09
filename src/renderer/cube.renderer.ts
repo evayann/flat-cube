@@ -37,28 +37,37 @@ export class RendererCube extends HistoricalCube {
         return Object.values(this.renderedFaces).flat();
     }
 
+    private get topCirclePosition(): p5.Vector {
+        return p.createVector(
+            this.centerPosition.x,
+            this.centerPosition.y + this.spaceBetweenFirstAndLastCircle / 2
+        );
+    }
+
     private get topCircleList(): Circle[] {
-        const centerPosition = {
-            x: this.centerPosition.x,
-            y: this.centerPosition.y + this.spaceBetweenFirstAndLastCircle / 2
-        };
-        return this.getCircleListAt(centerPosition);
+        return this.getCircleListAt(this.topCirclePosition);
+    }
+
+    private get leftCirclePosition(): p5.Vector {
+        return p.createVector(
+            this.centerPosition.x - this.halfRadius + this.spaceBetweenFirstAndLastCircle / 3,
+            this.centerPosition.y + this.halfRadius * p.sqrt(3)
+        );
     }
 
     private get leftCircleList(): Circle[] {
-        const centerPosition = {
-            x: this.centerPosition.x - this.halfRadius + this.spaceBetweenFirstAndLastCircle / 3,
-            y: this.centerPosition.y + this.halfRadius * p.sqrt(3)
-        };
-        return this.getCircleListAt(centerPosition);
+        return this.getCircleListAt(this.leftCirclePosition);
+    }
+
+    private get rightCirclePosition(): p5.Vector {
+        return p.createVector(
+            this.centerPosition.x + this.halfRadius - this.spaceBetweenFirstAndLastCircle / 3,
+            this.centerPosition.y + this.halfRadius * p.sqrt(3)
+        );
     }
 
     private get rightCircleList(): Circle[] {
-        const centerPosition = {
-            x: this.centerPosition.x + this.halfRadius - this.spaceBetweenFirstAndLastCircle / 3,
-            y: this.centerPosition.y + this.halfRadius * p.sqrt(3)
-        };
-        return this.getCircleListAt(centerPosition);
+        return this.getCircleListAt(this.rightCirclePosition);
     }
 
     private get spaceBetweenFirstAndLastCircle(): number {
@@ -115,18 +124,25 @@ export class RendererCube extends HistoricalCube {
     rotateX(columnIndex: number, isClockwise: boolean): void {
         if (this.isMoving) return;
         super.rotateX(columnIndex, isClockwise);
-        this.triggerMogementAnimation(isClockwise);
+        this.triggerMogementAnimation(this.topCirclePosition, isClockwise);
     }
 
     rotateY(rowIndex: number, isClockwise: boolean): void {
         if (this.isMoving) return;
         super.rotateY(rowIndex, isClockwise);
-        this.triggerMogementAnimation(isClockwise);
+        this.triggerMogementAnimation(this.rightCirclePosition, isClockwise);
     }
 
-    private triggerMogementAnimation(isClockwise: boolean): void {
+    rotateZ(rowIndex: number, isClockwise: boolean): void {
+        if (this.isMoving) return;
+        super.rotateZ(rowIndex, isClockwise);
+        this.triggerMogementAnimation(this.leftCirclePosition, isClockwise);
+    }
+
+    private triggerMogementAnimation(pivotPosition: p5.Vector, isClockwise: boolean): void {
         this.animationManager.animate({
             callback: (percentage) => {
+                console.log(percentage)
                 this.isMoving = true;
                 const faceList = Object.entries(this.historicFaces) as [FaceName, HistoricBlock[]][];
                 this.renderedFaces = faceList.reduce((renderedFaces, [faceName, historicBlock]) => {
@@ -140,20 +156,9 @@ export class RendererCube extends HistoricalCube {
                         const oldPositionVec = this.getPositionFromKey({ faceName: oldPosition.face, index: oldPosition.index });
                         const newPositionVec = this.getPositionFromKey({ faceName, index });
                         const position = !hasChangeOfFace ? p5.Vector.lerp(oldPositionVec, newPositionVec, percentage)
-                            : slerp(oldPositionVec, newPositionVec, circlePosition, percentage, isClockwise);
+                            : slerp(oldPositionVec, newPositionVec, pivotPosition, percentage, isClockwise);
 
                         return { color, position };
-
-                        // if (isBlockItem(displayBlock)) return displayBlock;
-
-                        // const position = displayBlock.type === 'linear' ?
-                        //     p5.Vector.lerp(displayBlock.from, displayBlock.to, percentage)
-                        //     : slerp(displayBlock.from, displayBlock.to, circlePosition.raw, percentage, displayBlock.clockwise);
-
-                        // return {
-                        //     color: displayBlock.color,
-                        //     position
-                        // };
                     });
 
                     return renderedFaces;
@@ -167,10 +172,6 @@ export class RendererCube extends HistoricalCube {
     private getPositionFromKey({ faceName, index }: { faceName: FaceName, index: number }): p5.Vector {
         return this.positions[faceName][index];
     }
-
-    // private getCenterCircleFromKey(axeRotate: 'x' | 'y'{, faceName, index }: { faceName: FaceName, index: number }): p5.Vector {
-    //     return
-    // }
 
     private drawLines() {
         p.noFill();

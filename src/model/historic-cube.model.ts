@@ -25,6 +25,12 @@ export class HistoricalCube extends CubeModel {
         this.updateHistoricFaces(oldFaces, this.facesCopy());
     }
 
+    rotateZ(rowIndex: number, isClockwise: boolean): void {
+        const oldFaces = this.facesCopy();
+        super.rotateZ(rowIndex, isClockwise);
+        this.updateHistoricFaces(oldFaces, this.facesCopy());
+    }
+
     private updateHistoricFaces(oldFaces: Faces, newFaces: Faces): void {
         const searchBlockInFaces = (faces: Faces, searchedBlock: Block): { face: FaceName, index: number } | undefined => {
             const nameAndFaceList = Object.entries(faces) as [FaceName, Face][];
